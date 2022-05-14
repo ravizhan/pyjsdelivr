@@ -1,0 +1,37 @@
+{
+  "origin":{
+    "github":"https://raw.githubusercontent.com/",
+    "npm":"https://unpkg.com/"
+  },
+  "blacklist_gh": {
+    "repo": [],
+    "user": [],
+    "suffix": []
+  },
+  "blacklist_npm": {
+    "package": [],
+    "suffix": []
+  },
+  "img_scan": {
+    "provider": "",
+    "baidu_APP_ID": "",
+    "baidu_APP_KEY": "",
+    "baidu_SECRET_KEY": "",
+    "huawei_AK": "",
+    "huawei_SK": "",
+    "huawei_region": ""
+  },
+  "stronge": {
+    "location":"",
+    "ACCESS_KEY":"",
+    "SECRET_KEY":"",
+    "endpoint_url":""
+  },
+  "mysql": {
+    "host": "",
+    "port": "",
+    "user": "",
+    "password": "",
+    "database": ""
+  }
+}
