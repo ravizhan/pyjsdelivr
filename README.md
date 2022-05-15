@@ -5,6 +5,9 @@
 从此不再受制于cdn.jsdelivr.net
 
 演示站点: https://cdn.ravi.cool
+
+**仍处于测试阶段，请勿部署**
+
 ## 功能
 - [x] 基本兼容cdn.jsdelivr.net
 - [x] 黑名单功能
