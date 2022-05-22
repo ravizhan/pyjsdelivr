@@ -23,6 +23,7 @@
   },
   "stronge": {
     "location":"",
+    "local_dir":"/data/",
     "ACCESS_KEY":"",
     "SECRET_KEY":"",
     "endpoint_url":""

@@ -41,16 +41,18 @@ def gh(path: str):
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     url = config["origin"]["github"]+"%s/%s/%s/%s" % (user, repo, version, file)
     req = r.get(url)
+    if config["stronge"]["location"] in ["local","S3"]:
+        modules.stroge_file(req.content,"/gh/"+path)
     if req.status_code != 200:
         text = "Failed to fetch " + '/'.join([user, repo, version]) + "/" + file + "\nPealse check your enter"
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
-        res = modules.img_scan(req.content, file)
+        res = modules.img_scan(req.content, "/gh/"+path)
         if type(res) == str:
             text = "Something goes wrong.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
         if not res:
-            text = "This file is in blacklist.\nPlease contact website manager for more detail."
+            text = "This file is in the blacklist.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     return Response(content=req.content, headers={"content-type": req.headers["content-type"]})
 
@@ -71,16 +73,18 @@ def npm(path: str):
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     url = config["origin"]["npm"]+path
     req = r.get(url)
+    if config["stronge"]["location"] in ["local","S3"]:
+        modules.stroge_file(req.content,"/npm/"+path)
     if req.status_code != 200:
         text = "Failed to fetch %s@%s/%s\nPealse check your enter" % (package, version, filename)
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
-        res = modules.img_scan(req.content, path)
-        if not res:
-            text = "This file is in blacklist.\nPlease contact website manager for more detail."
-            return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+        res = modules.img_scan(req.content, "/npm/"+path)
         if type(res) == str:
             text = "something goes wrong.\nPlease contact website manager for more detail."
+            return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+        if not res:
+            text = "This file is in the blacklist.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     return Response(content=req.content, headers={"content-type": req.headers["content-type"]})
 

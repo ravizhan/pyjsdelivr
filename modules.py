@@ -1,5 +1,7 @@
 import base64
 import json
+import hashlib
+from threading import local
 import time
 from aip import AipContentCensor
 from huaweicloudsdkcore.auth.credentials import BasicCredentials
@@ -47,6 +49,11 @@ db = DB()
 def img_scan(content: bytes,file: str):
     with open("./config.json") as f:
         config = json.loads(f.read())["img_scan"]
+    hash = hashlib.sha256(content).hexdigest()
+    sql = f"SELECT * FROM `blacklist` WHERE 'hash'='{hash}'"
+    res = db.query(sql)
+    if len(res) != 0:
+        return False
     if config["provider"] == "":
         return True
     if config["provider"] == "baidu":
@@ -59,7 +66,7 @@ def img_scan(content: bytes,file: str):
                 detail = []
                 for i in result["data"]:
                     detail.append(i["msg"])
-                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{detail}','{str(round(time.time()))}')"
+                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{hash}','{detail}','{str(round(time.time()))}')"
                 db.query(sql)
                 return False
         except Exception as e:
@@ -84,9 +91,18 @@ def img_scan(content: bytes,file: str):
                 return True
             else:
                 detail = json.dumps(response.result.category_suggestions)
-                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{escape_string(detail)}','{str(round(time.time()))}')"
+                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{hash}','{escape_string(detail)}','{str(round(time.time()))}')"
                 db.query(sql)
                 return False
         except exceptions.ClientRequestException as e:
             print(e)
             return str(e)
+
+def stroge_file(content: bytes,file:str):
+    with open("./config.json") as f:
+        config = json.loads(f.read())["stronge"]
+    if config["location"] == "local":
+        with open(config["location"]["local_dir"]+file,"wb") as f:
+            f.write(content)
+        return True
+    # if config["location"] == "S3":

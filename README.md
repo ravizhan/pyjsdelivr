@@ -12,7 +12,7 @@
 - [x] 基本兼容cdn.jsdelivr.net
 - [x] 黑名单功能
 - [x] 内容审核功能
-- [ ] 本地存储
+- [x] 本地存储
 - [ ] S3云存储
 ## 部署方法
 ### 拉取代码
@@ -50,6 +50,7 @@ pip3 install ./requirements.txt
   },
   "stronge": { //存储位置
     "location":"", // local/S3 对应为本地和S3存储
+    "local_dir":"/data/", // 改为本地存储地址
     "ACCESS_KEY":"",
     "SECRET_KEY":"",
     "endpoint_url":"", // 如https://s3.cn-north-1.jdcloud-oss.com
