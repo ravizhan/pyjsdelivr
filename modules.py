@@ -1,7 +1,6 @@
 import base64
 import json
 import hashlib
-from threading import local
 import time
 from aip import AipContentCensor
 from huaweicloudsdkcore.auth.credentials import BasicCredentials
@@ -11,6 +10,9 @@ from huaweicloudsdkmoderation.v2 import ModerationClient, RunImageModerationRequ
 import pymysql
 import pymysql.cursors
 from pymysql import escape_string
+import boto3
+from io import BytesIO
+import os
 
 
 class DB:
@@ -46,11 +48,11 @@ class DB:
 db = DB()
 
 
-def img_scan(content: bytes,file: str):
+def img_scan(content: bytes, file: str):
     with open("./config.json") as f:
         config = json.loads(f.read())["img_scan"]
-    hash = hashlib.sha256(content).hexdigest()
-    sql = f"SELECT * FROM `blacklist` WHERE 'hash'='{hash}'"
+    content_hash = hashlib.sha256(content).hexdigest()
+    sql = f"SELECT * FROM `blacklist` WHERE 'hash'='{content_hash}'"
     res = db.query(sql)
     if len(res) != 0:
         return False
@@ -66,7 +68,7 @@ def img_scan(content: bytes,file: str):
                 detail = []
                 for i in result["data"]:
                     detail.append(i["msg"])
-                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{hash}','{detail}','{str(round(time.time()))}')"
+                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{content_hash}','{detail}','{str(round(time.time()))}')"
                 db.query(sql)
                 return False
         except Exception as e:
@@ -91,18 +93,51 @@ def img_scan(content: bytes,file: str):
                 return True
             else:
                 detail = json.dumps(response.result.category_suggestions)
-                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{hash}','{escape_string(detail)}','{str(round(time.time()))}')"
+                sql = f"INSERT INTO `blacklist` VALUES ('{file}','{content_hash}','{escape_string(detail)}','{str(round(time.time()))}')"
                 db.query(sql)
                 return False
         except exceptions.ClientRequestException as e:
             print(e)
             return str(e)
 
-def stroge_file(content: bytes,file:str):
+
+def storage_file(content: bytes, file: str):
     with open("./config.json") as f:
-        config = json.loads(f.read())["stronge"]
+        config = json.loads(f.read())["storage"]
     if config["location"] == "local":
-        with open(config["location"]["local_dir"]+file,"wb") as f:
+        os.makedirs(os.path.dirname(config["local_dir"] + file), exist_ok=True)
+        with open(config["local_dir"] + file, "wb") as f:
             f.write(content)
         return True
-    # if config["location"] == "S3":
+    if config["location"] == "S3":
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=config["ACCESS_KEY"],
+            aws_secret_access_key=config["SECRET_KEY"],
+            endpoint_url=config["endpoint_url"]
+        )
+        s3_client.upload_fileobj(BytesIO(content), config["BUCKET_NAME"], file)
+        return True
+
+
+def get_file(file: str):
+    try:
+        with open("./config.json") as f:
+            config = json.loads(f.read())["storage"]
+        if config["location"] == "local":
+            with open(config["location"]["local_dir"] + file, "rb") as f:
+                content = f.read()
+            return content
+        if config["location"] == "S3":
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=config["ACCESS_KEY"],
+                aws_secret_access_key=config["SECRET_KEY"],
+                endpoint_url=config["endpoint_url"]
+            )
+            content = BytesIO()
+            s3_client.download_fileobj(config["BUCKET_NAME"], file[1:], content)
+            content.seek(0)
+            return content.read()
+    except Exception:
+        return None

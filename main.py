@@ -17,6 +17,13 @@ with open("./config.json") as f:
 db = modules.db
 
 
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Powered-by"] = "ravizhan/pyjsdelivr"
+    return response
+
+
 @app.get("/")
 def index():
     with open("./index.html", encoding="utf-8") as f:
@@ -39,15 +46,19 @@ def gh(path: str):
             config["blacklist_gh"]["suffix"]:
         text = "This file is in blacklist.\nPlease contact website manager for more detail."
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
-    url = config["origin"]["github"]+"%s/%s/%s/%s" % (user, repo, version, file)
+    url = config["origin"]["github"] + "%s/%s/%s/%s" % (user, repo, version, file)
+    if config["storage"]["location"] in ["local", "S3"]:
+        content = modules.get_file("/gh/" + path)
+        if content is not None:
+            return Response(content=content)
     req = r.get(url)
-    if config["stronge"]["location"] in ["local","S3"]:
-        modules.stroge_file(req.content,"/gh/"+path)
+    if config["storage"]["location"] in ["local", "S3"]:
+        modules.storage_file(req.content, "gh/" + path)
     if req.status_code != 200:
-        text = "Failed to fetch " + '/'.join([user, repo, version]) + "/" + file + "\nPealse check your enter"
+        text = "Failed to fetch " + '/'.join([user, repo, version]) + "/" + file + "\nPlease check your enter"
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
-        res = modules.img_scan(req.content, "/gh/"+path)
+        res = modules.img_scan(req.content, "gh/" + path)
         if type(res) == str:
             text = "Something goes wrong.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
@@ -71,15 +82,19 @@ def npm(path: str):
     if package in config["blacklist_npm"]["package"] or filename.split(".")[-1] in config["blacklist_npm"]["suffix"]:
         text = "This file is in blacklist.\nPlease contact website manager for more detail."
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
-    url = config["origin"]["npm"]+path
+    url = config["origin"]["npm"] + path
+    if config["storage"]["location"] in ["local", "S3"]:
+        content = modules.get_file("npm/" + path)
+        if content is not None:
+            return Response(content=content)
     req = r.get(url)
-    if config["stronge"]["location"] in ["local","S3"]:
-        modules.stroge_file(req.content,"/npm/"+path)
+    if config["storage"]["location"] in ["local", "S3"]:
+        modules.storage_file(req.content, "npm/" + path)
     if req.status_code != 200:
-        text = "Failed to fetch %s@%s/%s\nPealse check your enter" % (package, version, filename)
+        text = "Failed to fetch %s@%s/%s\nPlease check your enter" % (package, version, filename)
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
-        res = modules.img_scan(req.content, "/npm/"+path)
+        res = modules.img_scan(req.content, "/npm/" + path)
         if type(res) == str:
             text = "something goes wrong.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
