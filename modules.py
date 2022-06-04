@@ -16,13 +16,19 @@ import os
 
 
 class DB:
+    """
+    MySql相关操作
+    """
     def __init__(self):
         self.conn = None
         with open("./config.json") as f:
-            self.config = json.loads(f.read())["mysql"]
+            self.config = json.load(f)["mysql"]
         self.connect()
 
     def connect(self):
+        """
+        连接MySql
+        """
         self.conn = pymysql.connect(
             host=self.config["host"],
             user=self.config["user"],
@@ -35,6 +41,9 @@ class DB:
         )
 
     def query(self, sql):
+        """
+        数据查询
+        """
         try:
             cursor = self.conn.cursor()
             cursor.execute(sql)
@@ -49,8 +58,14 @@ db = DB()
 
 
 def img_scan(content: bytes, file: str):
+    """
+    图片扫描
+    :param content: 图片二进制内容
+    :param file: 文件路径
+    :return: True/False/str
+    """
     with open("./config.json") as f:
-        config = json.loads(f.read())["img_scan"]
+        config = json.load(f)["img_scan"]
     content_hash = hashlib.sha256(content).hexdigest()
     sql = f"SELECT * FROM `blacklist` WHERE 'hash'='{content_hash}'"
     res = db.query(sql)
@@ -102,8 +117,14 @@ def img_scan(content: bytes, file: str):
 
 
 def storage_file(content: bytes, file: str):
+    """
+    文件存储
+    :param content: 文件二进制内容
+    :param file: 文件路径
+    :return: True
+    """
     with open("./config.json") as f:
-        config = json.loads(f.read())["storage"]
+        config = json.load(f)["storage"]
     if config["location"] == "local":
         os.makedirs(os.path.dirname(config["local_dir"] + file), exist_ok=True)
         with open(config["local_dir"] + file, "wb") as f:
@@ -121,6 +142,11 @@ def storage_file(content: bytes, file: str):
 
 
 def get_file(file: str):
+    """
+    获取存储文件
+    :param file: 文件路径
+    :return: 文件二进制内容
+    """
     try:
         with open("./config.json") as f:
             config = json.loads(f.read())["storage"]
