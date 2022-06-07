@@ -13,12 +13,12 @@ from pymysql import escape_string
 import boto3
 from io import BytesIO
 import os
+from PIL import Image
 
 
 class DB:
-    """
-    MySql相关操作
-    """
+    """MySql相关操作"""
+
     def __init__(self):
         self.conn = None
         with open("./config.json") as f:
@@ -26,9 +26,7 @@ class DB:
         self.connect()
 
     def connect(self):
-        """
-        连接MySql
-        """
+        """连接MySql"""
         self.conn = pymysql.connect(
             host=self.config["host"],
             user=self.config["user"],
@@ -41,9 +39,7 @@ class DB:
         )
 
     def query(self, sql):
-        """
-        数据查询
-        """
+        """数据查询"""
         try:
             cursor = self.conn.cursor()
             cursor.execute(sql)
@@ -167,3 +163,24 @@ def get_file(file: str):
             return content.read()
     except Exception:
         return None
+
+
+def compress_file(content: bytes, file_type: str):
+    if file_type == "img":
+        img = Image.open(BytesIO(content))
+        img.convert("RGB")
+        data = BytesIO()
+        img.save(data, 'webp', optimize=True, quality=75)
+        return data.getvalue()
+    if file_type == "js":
+        with open("temp.js", "w", encoding="utf-8") as f:
+            f.write(content.decode())
+        os.system('uglifyjs ./temp.js -o ./temp.js -c -m')
+        with open("temp.js", "r", encoding="utf-8") as f:
+            return f.read().encode()
+    if file_type == "css":
+        with open("temp.css", "w", encoding="utf-8") as f:
+            f.write(content.decode())
+        os.system('cleancss -o temp.css temp.css')
+        with open("temp.css", "r", encoding="utf-8") as f:
+            return f.read().encode()

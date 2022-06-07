@@ -19,28 +19,23 @@ db = modules.db
 
 @app.middleware("http")
 async def process(request: Request, call_next):
-    """
-    中间件处理请求
-    """
+    """中间件处理请求"""
     response = await call_next(request)
     response.headers["X-Powered-by"] = "ravizhan/pyjsdelivr"
+    response.headers["Content-Disposition"] = "inline"
     return response
 
 
 @app.get("/")
 def index():
-    """
-    首页
-    """
+    """首页"""
     with open("./index.html", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
 
 @app.get("/gh/{path:path}")
 def gh(path: str):
-    """
-    处理github请求
-    """
+    """处理github请求"""
     # 路径处理
     path_split = path.split("/")
     user = path_split[0]
@@ -57,19 +52,27 @@ def gh(path: str):
         text = "This file is in blacklist.\nPlease contact website manager for more detail."
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     # 文件存储
-    url = config["origin"]["github"] + "%s/%s/%s/%s" % (user, repo, version, file)
+    url = str(config["origin"]["github"] + "%s/%s/%s/%s" % (user, repo, version, file))
+    if ".".join(url.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+        url = url[:-5]
     if config["storage"]["location"] in ["local", "S3"]:
         content = modules.get_file("/gh/" + path)
         if content is not None:
             return Response(content=content)
     req = r.get(url)
-    if config["storage"]["location"] in ["local", "S3"]:
-        modules.storage_file(req.content, "gh/" + path)
     if req.status_code != 200:
+        if url.endswith(("min.js", "min.css")):
+            req = r.get(url.replace("min.", ""))
+            if req.status_code == 200:
+                # 文件压缩
+                content = modules.compress_file(req.content, url.split(".")[-1])
+                if config["storage"]["location"] in ["local", "S3"]:
+                    modules.storage_file(req.content, "gh/" + path)
+                return Response(content=content, headers={"content-type": req.headers["content-type"]})
         text = "Failed to fetch " + '/'.join([user, repo, version]) + "/" + file + "\nPlease check your enter"
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     # 图片扫描
-    if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
+    if "image" in req.headers["content-type"]:
         res = modules.img_scan(req.content, "gh/" + path)
         if type(res) is str:
             text = "Something goes wrong.\nPlease contact website manager for more detail."
@@ -77,14 +80,20 @@ def gh(path: str):
         if not res:
             text = "This file is in the blacklist.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+    # 图片压缩
+    if ".".join(path.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+        content = modules.compress_file(req.content, "img")
+        if config["storage"]["location"] in ["local", "S3"]:
+            modules.storage_file(content, "gh/" + path)
+        return Response(content=content, headers={"content-type": req.headers["content-type"]})
+    if config["storage"]["location"] in ["local", "S3"]:
+        modules.storage_file(req.content, "gh/" + path)
     return Response(content=req.content, headers={"content-type": req.headers["content-type"]})
 
 
 @app.get("/npm/{path:path}")
 def npm(path: str):
-    """
-    处理npm请求
-    """
+    """处理npm请求"""
     # 路径处理
     path_split = path.split("/")
     if "@" in path_split[0]:
@@ -100,18 +109,26 @@ def npm(path: str):
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     # 文件存储
     url = config["origin"]["npm"] + path
+    if ".".join(url.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+        url = url[:-5]
     if config["storage"]["location"] in ["local", "S3"]:
         content = modules.get_file("npm/" + path)
         if content is not None:
             return Response(content=content)
     req = r.get(url)
-    if config["storage"]["location"] in ["local", "S3"]:
-        modules.storage_file(req.content, "npm/" + path)
     if req.status_code != 200:
+        if url.endswith(("min.js", "min.css")):
+            req = r.get(url.replace("min.", ""))
+            if req.status_code == 200:
+                # 文件压缩
+                content = modules.compress_file(req.content, url.split(".")[-1])
+                if config["storage"]["location"] in ["local", "S3"]:
+                    modules.storage_file(req.content, "npm/" + path)
+                return Response(content=content, headers={"content-type": req.headers["content-type"]})
         text = "Failed to fetch %s@%s/%s\nPlease check your enter" % (package, version, filename)
         return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
     # 图片扫描
-    if url.split(".")[-1] in ["jpg", "jpeg", "bmp", "png"]:
+    if "image" in req.headers["content-type"]:
         res = modules.img_scan(req.content, "/npm/" + path)
         if type(res) is str:
             text = "something goes wrong.\nPlease contact website manager for more detail."
@@ -119,6 +136,14 @@ def npm(path: str):
         if not res:
             text = "This file is in the blacklist.\nPlease contact website manager for more detail."
             return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+    # 图片压缩
+    if ".".join(path.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+        content = modules.compress_file(req.content, "img")
+        if config["storage"]["location"] in ["local", "S3"]:
+            modules.storage_file(content, "npm/" + path)
+        return Response(content=content, headers={"content-type": req.headers["content-type"]})
+    if config["storage"]["location"] in ["local", "S3"]:
+        modules.storage_file(req.content, "npm/" + path)
     return Response(content=req.content, headers={"content-type": req.headers["content-type"]})
 
 
