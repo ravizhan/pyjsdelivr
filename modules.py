@@ -145,7 +145,7 @@ def get_file(file: str):
     """
     try:
         with open("./config.json") as f:
-            config = json.loads(f.read())["storage"]
+            config = json.load(f)["storage"]
         if config["location"] == "local":
             with open(config["location"]["local_dir"] + file, "rb") as f:
                 content = f.read()
@@ -166,6 +166,12 @@ def get_file(file: str):
 
 
 def compress_file(content: bytes, file_type: str):
+    """
+    文件压缩
+    :param content: 文件二进制内容
+    :param file_type: 文件类型
+    :return: 文件二进制内容
+    """
     if file_type == "img":
         img = Image.open(BytesIO(content))
         img.convert("RGB")

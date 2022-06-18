@@ -147,6 +147,99 @@ def npm(path: str):
     return Response(content=req.content, headers={"content-type": req.headers["content-type"]})
 
 
+@app.get("/combine/{path:path}")
+def combine(path: str):
+    paths = path.split(",")
+    result = b""
+    for _path in paths:
+        if not _path.endswith(("js", "css")):
+            text = "The files must be js or css."
+            return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+        if _path.startswith("gh"):
+            _path = _path[3:]
+            # 路径处理
+            path_split = _path.split("/")
+            user = path_split[0]
+            if "@" in path_split[1]:
+                repo = path_split[1].split("@")[0]
+                version = path_split[1].split("@")[1]
+            else:
+                repo = path_split[1]
+                version = "master"
+            file = "/".join(path_split[2:])
+            # 判断黑名单
+            if user in config["blacklist_gh"]["user"] or repo in config["blacklist_gh"]["repo"] or file.split(".")[
+                -1] in \
+                    config["blacklist_gh"]["suffix"]:
+                text = "This file is in blacklist.\nPlease contact website manager for more detail."
+                return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+            # 文件存储
+            url = str(config["origin"]["github"] + "%s/%s/%s/%s" % (user, repo, version, file))
+            if ".".join(url.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+                url = url[:-5]
+            if config["storage"]["location"] in ["local", "S3"]:
+                content = modules.get_file("/gh/" + _path)
+                if content is not None:
+                    result += b"\n\n" + content
+                    continue
+            req = r.get(url)
+            if req.status_code != 200:
+                if url.endswith(("min.js", "min.css")):
+                    req = r.get(url.replace("min.", ""))
+                    if req.status_code == 200:
+                        # 文件压缩
+                        content = modules.compress_file(req.content, url.split(".")[-1])
+                        if config["storage"]["location"] in ["local", "S3"]:
+                            modules.storage_file(req.content, "gh/" + _path)
+                        result += b"\n\n" + content
+                        continue
+                text = "Failed to fetch " + '/'.join([user, repo, version]) + "/" + file + "\nPlease check your enter"
+                return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+            result += b"\n\n" + req.content
+            continue
+        if _path.startswith("npm"):
+            _path = _path[4:]
+            # 路径处理
+            path_split = _path.split("/")
+            if "@" in path_split[0]:
+                package = path_split[0].split("@")[0]
+                version = path_split[0].split("@")[1]
+            else:
+                text = "No version was specified.\nRight format: package@version/file"
+                return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+            filename = "/".join(path_split[1:])
+            # 判断黑名单
+            if package in config["blacklist_npm"]["package"] or filename.split(".")[-1] in config["blacklist_npm"][
+                "suffix"]:
+                text = "This file is in blacklist.\nPlease contact website manager for more detail."
+                return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+            # 文件存储
+            url = config["origin"]["npm"] + _path
+            if ".".join(url.split(".")[-2:]) in ["jpg.webp", "jpeg.webp", "bmp.webp", "png.webp"]:
+                url = url[:-5]
+            if config["storage"]["location"] in ["local", "S3"]:
+                content = modules.get_file("npm/" + _path)
+                if content is not None:
+                    result += b"\n\n" + content
+                    continue
+            req = r.get(url)
+            if req.status_code != 200:
+                if url.endswith(("min.js", "min.css")):
+                    req = r.get(url.replace("min.", ""))
+                    if req.status_code == 200:
+                        # 文件压缩
+                        content = modules.compress_file(req.content, url.split(".")[-1])
+                        if config["storage"]["location"] in ["local", "S3"]:
+                            modules.storage_file(req.content, "npm/" + _path)
+                        result += b"\n\n" + req.content
+                        continue
+                text = "Failed to fetch %s@%s/%s\nPlease check your enter" % (package, version, filename)
+                return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
+            result += b"\n\n" + req.content
+            continue
+    return Response(content=result, headers={"content-type": "application/javascript; charset=utf-8" if path.endswith("js") else "text/css; charset=utf-8"})
+
+
 if __name__ == '__main__':
     import uvicorn
 
