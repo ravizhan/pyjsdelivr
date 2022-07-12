@@ -88,6 +88,8 @@ npm install uglify-js clean-css-cli -g
   }
 }
 ```
+### 导入数据库结构
+将文件夹中的`blacklist.sql`导入MySQL即可
 ### 启动
 二选一即可
 ```bash
