@@ -237,7 +237,8 @@ def combine(path: str):
                 return Response(content=text, headers={"content-type": "text/plain; charset=utf-8"})
             result += b"\n\n" + req.content
             continue
-    return Response(content=result, headers={"content-type": "application/javascript; charset=utf-8" if path.endswith("js") else "text/css; charset=utf-8"})
+    return Response(content=result, headers={
+        "content-type": "application/javascript; charset=utf-8" if path.endswith("js") else "text/css; charset=utf-8"})
 
 
 if __name__ == '__main__':

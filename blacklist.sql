@@ -1,19 +1,3 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : pyjsd
- Source Server Type    : MySQL
- Source Server Version : 50737
- Source Host           : 192.168.3.132:3306
- Source Schema         : pyjsd
-
- Target Server Type    : MySQL
- Target Server Version : 50737
- File Encoding         : 65001
-
- Date: 04/07/2022 19:56:07
-*/
-
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 

@@ -40,13 +40,9 @@ class DB:
 
     def query(self, sql):
         """数据查询"""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql)
-        except pymysql.OperationalError:
-            self.connect()
-            cursor = self.conn.cursor()
-            cursor.execute(sql)
+        self.conn.ping()
+        cursor = self.conn.cursor()
+        cursor.execute(sql)
         return cursor.fetchall()
 
 
